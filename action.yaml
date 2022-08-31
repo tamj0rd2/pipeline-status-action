@@ -16,6 +16,9 @@ inputs:
   checkNames:
     description: 'Comma separated list of check names to get the status for'
     required: true
+  slackWebhookURL:
+    description: 'The slack webhook URL to send alerts via'
+    required: true
 runs:
   using: 'docker'
   image: 'Dockerfile'
@@ -24,3 +27,4 @@ runs:
     - -repository=${{ inputs.repository }}
     - -sha=${{ inputs.sha }}
     - -checkNames=${{ inputs.checkNames }}
+    - -slackWebhookURL=${{ inputs.slackWebhookURL }}

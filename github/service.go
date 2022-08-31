@@ -33,7 +33,7 @@ func (s Service) WaitForChecksToSucceed(ctx context.Context, timeout time.Durati
 
 	for {
 		if err := ctx.Err(); err != nil {
-			return fmt.Errorf("timed out waiting for checks [%s] to complete: %w", statusTracker.GetIncompleteChecks(), err)
+			return fmt.Errorf("timed out waiting for checks (%s) to complete: %w", statusTracker.GetIncompleteChecks(), err)
 		}
 
 		if err := s.check(ctx, owner, repo, sha, statusTracker); err != nil {
@@ -41,7 +41,7 @@ func (s Service) WaitForChecksToSucceed(ctx context.Context, timeout time.Durati
 		}
 
 		if failedChecks := statusTracker.GetFailedChecks(); len(failedChecks) > 0 {
-			return fmt.Errorf("some checks failed - [%s]", strings.Join(failedChecks, ", "))
+			return fmt.Errorf("some checks failed - %s", strings.Join(failedChecks, ", "))
 		}
 
 		if statusTracker.AllCompletedSuccessfully() {

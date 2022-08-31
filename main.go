@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/tamj0rd2/pipeline-status-action/slack"
 	"log"
 	"os"
 	"strings"
@@ -26,26 +27,35 @@ func main() {
 	github := github.NewService(ctx, config.token)
 
 	if err := github.WaitForChecksToSucceed(ctx, time.Hour, config.owner, config.repoName, config.sha, config.checkNames); err != nil {
-		log.Fatal(err)
+		log.Println(err)
+
+		if err := slack.AlertThatChecksFailed(ctx, config.slackWebhookURL, config.owner, config.repoName, config.sha, err.Error()); err != nil {
+			os.Exit(1)
+		}
+
+		log.Println("slack alert sent")
+		os.Exit(0)
 	}
 
 	fmt.Println("all status checks completed successfully")
 }
 
 type config struct {
-	token, sha string
-	owner      string
-	repoName   string
-	checkNames []string
+	token, sha      string
+	owner           string
+	repoName        string
+	checkNames      []string
+	slackWebhookURL string
 }
 
 func parseArgs() (config, error) {
-	var token, repo, sha, checkNames string
+	var token, repo, sha, checkNames, slackWebhookURL string
 
 	flag.StringVar(&token, "token", "", "GitHub token")
 	flag.StringVar(&repo, "repository", "", "GitHub repository")
 	flag.StringVar(&sha, "sha", "", "Commit SHA")
 	flag.StringVar(&checkNames, "checkNames", "", "A comma separated list of the checks to run, e.g check1,check2,check3")
+	flag.StringVar(&slackWebhookURL, "slackWebhookURL", "", "The slack webhook URL")
 	flag.Parse()
 
 	if token == "" {
@@ -64,15 +74,20 @@ func parseArgs() (config, error) {
 		return config{}, fmt.Errorf("checkNames is required")
 	}
 
+	if slackWebhookURL == "" {
+		return config{}, fmt.Errorf("slackWebhookURL is required")
+	}
+
 	splitRepo := strings.SplitN(repo, "/", 2)
 	owner := splitRepo[0]
 	repoName := splitRepo[1]
 
 	return config{
-		token:      token,
-		sha:        sha,
-		owner:      owner,
-		repoName:   repoName,
-		checkNames: strings.Split(checkNames, ","),
+		token:           token,
+		sha:             sha,
+		owner:           owner,
+		repoName:        repoName,
+		checkNames:      strings.Split(checkNames, ","),
+		slackWebhookURL: slackWebhookURL,
 	}, nil
 }

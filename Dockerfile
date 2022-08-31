@@ -6,6 +6,7 @@ COPY go.mod go.sum ./
 COPY vendor ./vendor
 COPY main.go ./main.go
 COPY github ./github
+COPY slack ./slack
 
 RUN go build -o ./github-action main.go
 
