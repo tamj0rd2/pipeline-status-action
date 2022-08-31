@@ -30,7 +30,7 @@ func main() {
 		log.Println(err)
 
 		if err := slack.AlertThatChecksFailed(ctx, config.slackWebhookURL, config.owner, config.repoName, config.sha, err.Error()); err != nil {
-			os.Exit(1)
+			log.Fatal(err)
 		}
 
 		log.Println("slack alert sent")
