@@ -28,7 +28,7 @@ func (s Service) WaitForChecksToSucceed(ctx context.Context, timeout time.Durati
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	const sleepTimeSeconds = 60
+	const sleepTimeSeconds = 30
 	statusTracker := newStatusTracker(checkNames)
 
 	for {
