@@ -1,0 +1,26 @@
+name: 'Hello World'
+description: 'Greet someone and record the time'
+inputs:
+  token:
+    description: 'GitHub token'
+    required: true
+    default: ${{ github.token }}
+  repository:
+    description: 'Repository to get the status from'
+    required: true
+    default: ${{ github.repository }}
+  sha:
+    description: 'SHA to get the status for'
+    required: true
+    default: ${{ github.sha }}
+  checkNames:
+    description: 'Comma separated list of check names to get the status for'
+    required: true
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - -token=${{ inputs.token }}
+    - -repository=${{ inputs.repository }}
+    - -sha=${{ inputs.sha }}
+    - -checkNames=${{ inputs.checkNames }}
