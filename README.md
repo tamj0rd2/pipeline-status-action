@@ -1,7 +1,7 @@
 # pipeline-status-action
 
-This action polls the github status API for the given checks and sends a message on slack if any
-of the checks have failed or do not complete within the specified timeout.
+This action polls the github status API for the given statuses to complete successfully and sends a message on slack
+if any of the checks have failed or do not complete within the specified timeout.
 
 ## Inputs
 
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check pipeline statuses
-        uses: tamj0rd2/pipeline-status-action@main
+        uses: tamj0rd2/pipeline-status-action@v1.1.0
         with:
-          checkNames: check1,check with spaces in the name,another-check
+          checkNames: statusName1,status with spaces in the name,another-status-name
 ```

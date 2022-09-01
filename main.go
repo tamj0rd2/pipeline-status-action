@@ -4,11 +4,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/tamj0rd2/pipeline-status-action/slack"
 	"log"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/tamj0rd2/pipeline-status-action/slack"
 
 	"github.com/tamj0rd2/pipeline-status-action/github"
 )
@@ -26,10 +27,11 @@ func main() {
 
 	github := github.NewService(ctx, config.token)
 
-	if err := github.WaitForChecksToSucceed(ctx, time.Hour, config.owner, config.repoName, config.sha, config.checkNames); err != nil {
-		log.Println(err)
+	if failedStatuses, err := github.WaitForChecksToSucceed(ctx, time.Hour, config.owner, config.repoName, config.sha, config.statusNames); err != nil {
+		log.Println(failedStatuses, err)
 
-		if err := slack.AlertThatChecksFailed(ctx, config.slackWebhookURL, config.owner, config.repoName, config.sha, err.Error()); err != nil {
+		author, message, url := github.GetCommitInfo(ctx, config.owner, config.repoName, config.sha)
+		if err := slack.AlertThatStatusFailed(ctx, config.slackWebhookURL, url, author, message, err.Error(), failedStatuses); err != nil {
 			log.Fatal(err)
 		}
 
@@ -44,7 +46,7 @@ type config struct {
 	token, sha      string
 	owner           string
 	repoName        string
-	checkNames      []string
+	statusNames     []string
 	slackWebhookURL string
 }
 
@@ -87,7 +89,7 @@ func parseArgs() (config, error) {
 		sha:             sha,
 		owner:           owner,
 		repoName:        repoName,
-		checkNames:      strings.Split(checkNames, ","),
+		statusNames:     strings.Split(checkNames, ","),
 		slackWebhookURL: slackWebhookURL,
 	}, nil
 }

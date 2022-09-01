@@ -9,8 +9,15 @@ import (
 	"strings"
 )
 
-func AlertThatChecksFailed(ctx context.Context, webhookURL string, owner string, repo string, sha string, message string) error {
-	commitURL := fmt.Sprintf("https://github.com/%s/%s/commit/%s", owner, repo, sha)
+func AlertThatStatusFailed(
+	ctx context.Context,
+	webhookURL string,
+	commitURL, commitAuthor, commitMessage string,
+	errorMessage string,
+	failedStatuses []string,
+) error {
+	errorBody := fmt.Sprintf("*Error*: %s\n*Failed statuses*: %s", errorMessage, strings.Join(failedStatuses, ", "))
+	commitDetails := fmt.Sprintf("*Commit author*: %s\n*Commit message*: %s", commitAuthor, commitMessage)
 
 	requestBody := fmt.Sprintf(`{
 		"blocks": [
@@ -18,7 +25,7 @@ func AlertThatChecksFailed(ctx context.Context, webhookURL string, owner string,
 				"type": "header",
 				"text": {
 					"type": "plain_text",
-					"text": "Commit status checks failed",
+					"text": ":x: Commit statuses failed",
 					"emoji": true
 				}
 			},
@@ -26,7 +33,17 @@ func AlertThatChecksFailed(ctx context.Context, webhookURL string, owner string,
 				"type": "section",
 				"text": {
 					"type": "mrkdwn",
-					"text": "%s"
+					"text": "%s",
+				}
+			},
+			{
+				"type": "divider",
+			},
+			{
+				"type": "section",
+				"text": {
+					"type": "mrkdwn",
+					"text": "%s",
 				}
 			},
 			{
@@ -43,7 +60,7 @@ func AlertThatChecksFailed(ctx context.Context, webhookURL string, owner string,
 				]
 			}
 		]
-	}`, message, commitURL)
+	}`, errorBody, commitDetails, commitURL)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, strings.NewReader(requestBody))
 	if err != nil {

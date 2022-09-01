@@ -2,6 +2,7 @@ package github
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -24,7 +25,7 @@ func NewService(ctx context.Context, githubToken string) *Service {
 	}
 }
 
-func (s Service) WaitForChecksToSucceed(ctx context.Context, timeout time.Duration, owner string, repo string, sha string, checkNames []string) error {
+func (s Service) WaitForChecksToSucceed(ctx context.Context, timeout time.Duration, owner string, repo string, sha string, checkNames []string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -33,19 +34,19 @@ func (s Service) WaitForChecksToSucceed(ctx context.Context, timeout time.Durati
 
 	for {
 		if err := ctx.Err(); err != nil {
-			return fmt.Errorf("timed out waiting for checks (%s) to complete: %w", statusTracker.GetIncompleteChecks(), err)
+			return statusTracker.GetIncompleteChecks(), fmt.Errorf("timed out waiting for checks to start/complete: %w", err)
 		}
 
 		if err := s.check(ctx, owner, repo, sha, statusTracker); err != nil {
-			return err
+			return nil, fmt.Errorf("failed to get statuses for commit - %w", err)
 		}
 
 		if failedChecks := statusTracker.GetFailedChecks(); len(failedChecks) > 0 {
-			return fmt.Errorf("some checks failed - %s", strings.Join(failedChecks, ", "))
+			return statusTracker.GetFailedChecks(), errors.New("one or more checks failed")
 		}
 
 		if statusTracker.AllCompletedSuccessfully() {
-			return nil
+			return nil, nil
 		}
 
 		checksInProgress := statusTracker.GetIncompleteChecks()
@@ -56,6 +57,20 @@ func (s Service) WaitForChecksToSucceed(ctx context.Context, timeout time.Durati
 		)
 		time.Sleep(time.Second * time.Duration(sleepTimeSeconds))
 	}
+}
+
+func (s Service) GetCommitInfo(ctx context.Context, owner, repo, sha string) (string, string, string) {
+	c, _, err := s.client.Repositories.GetCommit(ctx, owner, repo, sha, nil)
+	if err != nil {
+		return "failed to retrieve", "failed to retrieve", fmt.Sprintf("https://github.com/%s/%s/commit/%s", owner, repo, sha)
+	}
+
+	trimmedCommitMessage := c.Commit.GetMessage()
+	if len(trimmedCommitMessage) > 45 {
+		trimmedCommitMessage = trimmedCommitMessage[:45] + "..."
+	}
+
+	return c.Commit.GetAuthor().GetName(), trimmedCommitMessage, c.GetHTMLURL()
 }
 
 func (s Service) check(ctx context.Context, owner string, repo string, sha string, statusTracker statusTracker) error {

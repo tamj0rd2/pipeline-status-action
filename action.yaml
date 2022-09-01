@@ -14,7 +14,7 @@ inputs:
     required: true
     default: ${{ github.sha }}
   checkNames:
-    description: 'Comma separated list of check names to get the status for'
+    description: 'Comma separated list of status names to wait for'
     required: true
   slackWebhookURL:
     description: 'The slack webhook URL to send alerts via'
