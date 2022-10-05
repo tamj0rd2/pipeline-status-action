@@ -19,6 +19,10 @@ inputs:
   slackWebhookURL:
     description: 'The slack webhook URL to send alerts via'
     required: true
+  timeoutMinutes:
+    description: 'The number of minutes to timeout after'
+    required: true
+    default: "60"
 runs:
   using: 'docker'
   image: 'Dockerfile'
@@ -28,3 +32,4 @@ runs:
     - -sha=${{ inputs.sha }}
     - -checkNames=${{ inputs.checkNames }}
     - -slackWebhookURL=${{ inputs.slackWebhookURL }}
+    - -timeoutMinutes=${{ inputs.timeoutMinutes }}
