@@ -36,7 +36,7 @@ func main() {
 		}
 
 		log.Println("slack alert sent")
-		os.Exit(0)
+		os.Exit(1)
 	}
 
 	fmt.Println("all status checks completed successfully")
