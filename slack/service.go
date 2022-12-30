@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/tamj0rd2/pipeline-status-action/github"
 )
 
 func AlertThatStatusFailed(
@@ -14,9 +16,14 @@ func AlertThatStatusFailed(
 	webhookURL string,
 	commitURL, commitAuthor, commitMessage string,
 	errorMessage string,
-	failedStatuses []string,
+	failedStatuses []github.Status,
 ) error {
-	errorBody := fmt.Sprintf("*Error*: %s\n*Failed statuses*: %s", errorMessage, strings.Join(failedStatuses, ", "))
+	var failedStatusMsg []string
+	for _, status := range failedStatuses {
+		failedStatusMsg = append(failedStatusMsg, fmt.Sprintf("<%v|%s>", status.Url, status.Name))
+	}
+
+	errorBody := fmt.Sprintf("*Error*: %s\n*Failed statuses*: %s", errorMessage, strings.Join(failedStatusMsg, ", "))
 	commitDetails := fmt.Sprintf("*Commit author*: %s\n*Commit message*: %s", commitAuthor, commitMessage)
 
 	requestBody := fmt.Sprintf(`{
