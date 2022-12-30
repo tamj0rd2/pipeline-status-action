@@ -33,7 +33,6 @@ func (s Service) WaitForChecksToSucceed(ctx context.Context, timeout time.Durati
 	statusTracker := newStatusTracker(checkNames)
 
 	for {
-		fmt.Println(statusTracker)
 		if err := ctx.Err(); err != nil {
 			return statusTracker.GetIncompleteChecks(), fmt.Errorf("timed out waiting for checks to start/complete: %w", err)
 		}
@@ -124,12 +123,8 @@ type Status struct {
 }
 
 func newStatus(name string) Status {
-	return Status{Name: name, Succeeded: false, Finished: false, Url: ""}
+	return Status{Name: name}
 }
-
-// type statusTracker struct {
-// 	statuses []Status
-// }
 
 func newStatusTracker(checkNames []string) statusTracker {
 	tracker := make(statusTracker)
