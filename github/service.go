@@ -25,7 +25,7 @@ func NewService(ctx context.Context, githubToken string) *Service {
 	}
 }
 
-func (s Service) WaitForChecksToSucceed(ctx context.Context, timeout time.Duration, owner string, repo string, sha string, checkNames []string) ([]string, error) {
+func (s Service) WaitForChecksToSucceed(ctx context.Context, timeout time.Duration, owner string, repo string, sha string, checkNames []string) ([]Status, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -50,9 +50,14 @@ func (s Service) WaitForChecksToSucceed(ctx context.Context, timeout time.Durati
 		}
 
 		checksInProgress := statusTracker.GetIncompleteChecks()
+		var checksInProgressName []string
+		for _, status := range checksInProgress {
+			checksInProgressName = append(checksInProgressName, status.Name)
+		}
+
 		log.Printf(
 			"waiting for some checks to start and/or complete - %s. will check again in %d seconds\n",
-			strings.Join(checksInProgress, ", "),
+			strings.Join(checksInProgressName, ", "),
 			sleepTimeSeconds,
 		)
 		time.Sleep(time.Second * time.Duration(sleepTimeSeconds))
@@ -79,20 +84,26 @@ func (s Service) check(ctx context.Context, owner string, repo string, sha strin
 		return err
 	}
 
-	for name, currentRecordedStatus := range statusTracker {
-		if currentRecordedStatus != nil {
+	for name, status := range statusTracker {
+		if status.Finished {
 			continue
 		}
 
-		for _, status := range combinedStatus.Statuses {
-			if status.GetContext() == name {
-				switch status.GetState() {
+		for _, gitStatus := range combinedStatus.Statuses {
+			if gitStatus.GetContext() == name {
+				stat := statusTracker[name]
+				stat.Finished = true
+				stat.Url = gitStatus.GetTargetURL()
+				switch gitStatus.GetState() {
 				case "success":
-					statusTracker[name] = github.Bool(true)
+					stat.Succeeded = true
+					statusTracker[name] = stat
 				case "error":
-					statusTracker[name] = github.Bool(false)
+					stat.Succeeded = false
+					statusTracker[name] = stat
 				case "failure":
-					statusTracker[name] = github.Bool(false)
+					stat.Succeeded = false
+					statusTracker[name] = stat
 				}
 				break
 			}
@@ -102,43 +113,50 @@ func (s Service) check(ctx context.Context, owner string, repo string, sha strin
 	return nil
 }
 
-type statusTracker map[string]*bool
+type statusTracker map[string]Status
+
+type Status struct {
+	Name      string
+	Succeeded bool
+	Finished  bool
+	Url       string
+}
+
+func newStatus(name string) Status {
+	return Status{Name: name}
+}
 
 func newStatusTracker(checkNames []string) statusTracker {
-	tracker := make(map[string]*bool)
+	tracker := make(statusTracker)
 	for _, name := range checkNames {
-		tracker[name] = nil
+		tracker[name] = newStatus(name)
 	}
 	return tracker
 }
 
-func (t statusTracker) GetFailedChecks() []string {
-	var failedChecks []string
-	for name, status := range t {
-		if status != nil && !*status {
-			failedChecks = append(failedChecks, name)
+func (t statusTracker) GetFailedChecks() []Status {
+	var failedChecks []Status
+	for _, status := range t {
+		if !status.Succeeded && status.Finished {
+			failedChecks = append(failedChecks, status)
 		}
 	}
 	return failedChecks
 }
 
-func (t statusTracker) GetIncompleteChecks() []string {
-	var incompleteChecks []string
-	for name, status := range t {
-		if status == nil {
-			incompleteChecks = append(incompleteChecks, name)
+func (t statusTracker) GetIncompleteChecks() []Status {
+	var incompleteChecks []Status
+	for _, status := range t {
+		if !status.Succeeded && !status.Finished {
+			incompleteChecks = append(incompleteChecks, status)
 		}
 	}
 	return incompleteChecks
 }
 
 func (t statusTracker) AllCompletedSuccessfully() bool {
-	for _, wasSuccessful := range t {
-		if wasSuccessful == nil {
-			return false
-		}
-
-		if !*wasSuccessful {
+	for _, status := range t {
+		if !status.Succeeded {
 			return false
 		}
 	}
